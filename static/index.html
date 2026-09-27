@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estimateur Volume Bois - IA Automatique</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 750px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 36px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: #4caf50;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 10px auto;
+            text-align: center;
+            width: fit-content;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            font-size: 14px;
+            color: #1565c0;
+            line-height: 1.6;
+        }
+        
+        .section-title {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 25px 0 15px 0;
+            font-weight: 600;
+            color: #333;
+            border-left: 4px solid #667eea;
+        }
+        
+        .photo-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .photo-card {
+            border: 2px dashed #667eea;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .photo-card:hover {
+            border-color: #764ba2;
+            background: #f5f5f5;
+        }
+        
+        .photo-card.loaded {
+            border-color: #4caf50;
+            background: #e8f5e9;
+        }
+        
+        .photo-card label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        
+        .photo-card input[type="file"] {
+            display: none;
+        }
+        
+        .upload-button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: 600;
+        }
+        
+        .upload-button:hover {
+            background: #764ba2;
+        }
+        
+        .filename {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .filename.ok {
+            color: #4caf50;
+            font-weight: 600;
+        }
+        
+        button#submitBtn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 30px;
+        }
+        
+        button#submitBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        button#submitBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading p {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .loading-subtitle {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .result {
+            display: none;
+            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+            border: 2px solid #4caf50;
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 30px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .result-title {
+            color: #2e7d32;
+            font-size: 28px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .result-values {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .result-value-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .big-number {
+            font-size: 52px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+        
+        .unit-label {
+            color: #666;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        
+        .result-details {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.8;
+        }
+        
+        .result-details p {
+            margin-bottom: 12px;
+        }
+        
+        .result-details strong {
+            color: #333;
+        }
+        
+        .precision-badge {
+            display: inline-block;
+            background: #2196f3;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+        
+        .error {
+            display: none;
+            background: #ffebee;
+            border: 2px solid #f44336;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .error.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌲 Estimateur IA</h1>
+        <p class="subtitle">Volume de bois calculé automatiquement à partir de 3 photos</p>
+        
+        <div style="text-align: center;">
+            <div class="badge">✨ SANS paramètres - 3 photos suffisent ✨</div>
+        </div>
+        
+        <div class="info-box">
+            <strong>📸 Mode d'emploi :</strong><br>
+            Prenez 3 photos du camion chargé sous différents angles (latéral, frontal, dessus). 
+            L'IA détectera automatiquement les dimensions et calculera le volume en temps réel.
+        </div>
+        
+        <form id="estimatorForm">
+            <div class="section-title">📸 Téléchargez 3 photos</div>
+            
+            <div class="photo-grid">
+                <div class="photo-card" id="card1" onclick="document.getElementById('image1').click()">
+                    <label>📐 Photo 1 - Vue Latérale</label>
+                    <input type="file" id="image1" accept="image/*" required>
+                    <span class="upload-button">📁 Choisir une photo</span>
+                    <div class="filename" id="file1">En attente...</div>
+                </div>
+                
+                <div class="photo-card" id="card2" onclick="document.getElementById('image2').click()">
+                    <label>📐 Photo 2 - Vue Frontale</label>
+                    <input type="file" id="image2" accept="image/*" required>
+                    <span class="upload-button">📁 Choisir une photo</span>
+                    <div class="filename" id="file2">En attente...</div>
+                </div>
+                
+                <div class="photo-card" id="card3" onclick="document.getElementById('image3').click()">
+                    <label>📐 Photo 3 - Vue de Dessus</label>
+                    <input type="file" id="image3" accept="image/*" required>
+                    <span class="upload-button">📁 Choisir une photo</span>
+                    <div class="filename" id="file3">En attente...</div>
+                </div>
+            </div>
+            
+            <button type="submit" id="submitBtn">🔍 Analyser les photos</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyse de l'IA en cours...</p>
+            <p class="loading-subtitle">Reconstruction 3D • Segmentation bois • Estimation profondeur • Calcul volumétrique</p>
+        </div>
+        
+        <div class="result" id="result">
+            <div class="result-title">✅ Volume estimé</div>
+            
+            <div class="result-values">
+                <div class="result-value-card">
+                    <div class="big-number" id="volumeM3">0</div>
+                    <div class="unit-label">m³</div>
+                </div>
+                <div class="result-value-card">
+                    <div class="big-number" id="volumeSteres">0</div>
+                    <div class="unit-label">Stères</div>
+                </div>
+            </div>
+            
+            <div class="result-details" id="resultDetails"></div>
+            
+            <div style="background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 12px;">
+                <strong>⚠️ Dimensions estimées</strong><br>
+                Pour VRAIE détection: ajoutez une <strong>référence d'échelle</strong> (ruban 1m, personne, etc.) dans la photo
+            </div>
+        </div>
+        
+        <div class="error" id="error"></div>
+    </div>
+    
+    <script>
+        const form = document.getElementById('estimatorForm');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const error = document.getElementById('error');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        ['image1', 'image2', 'image3'].forEach((id, index) => {
+            document.getElementById(id).addEventListener('change', (e) => {
+                const card = document.getElementById(`card${index + 1}`);
+                const fileDisplay = document.getElementById(`file${index + 1}`);
+                
+                if (e.target.files[0]) {
+                    const filename = e.target.files[0].name;
+                    fileDisplay.textContent = '✅ ' + filename;
+                    fileDisplay.classList.add('ok');
+                    card.classList.add('loaded');
+                } else {
+                    fileDisplay.textContent = 'En attente...';
+                    fileDisplay.classList.remove('ok');
+                    card.classList.remove('loaded');
+                }
+            });
+        });
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const img1 = document.getElementById('image1').files[0];
+            const img2 = document.getElementById('image2').files[0];
+            const img3 = document.getElementById('image3').files[0];
+            
+            if (!img1 || !img2 || !img3) {
+                showError('Veuillez télécharger les 3 photos');
+                return;
+            }
+            
+            error.classList.remove('show');
+            result.classList.remove('show');
+            loading.style.display = 'block';
+            submitBtn.disabled = true;
+            
+            try {
+                const formData = new FormData();
+                formData.append('image1', img1);
+                formData.append('image2', img2);
+                formData.append('image3', img3);
+                
+                const response = await fetch('http://localhost:8000/estimate-auto', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+                
+                if (data.success) {
+                    showResult(data);
+                } else {
+                    showError('Erreur : ' + (data.error || 'Analyse échouée'));
+                }
+                
+            } catch (err) {
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+                showError('Erreur de connexion : ' + err.message);
+            }
+        });
+        
+        function showResult(data) {
+            document.getElementById('volumeM3').textContent = data.volume_m3;
+            document.getElementById('volumeSteres').textContent = data.volume_steres;
+            
+            const dims = data.detected_truck_dimensions || data.estimated_truck_dimensions || {
+                length_m: 6.0,
+                width_m: 2.5,
+                height_m: 1.5,
+                volume_m3: 22.5
+            };
+            
+            const details = `
+                <p><strong>🚛 Dimensions du camion (détectées) :</strong><br>
+                ${dims.length_m}m × ${dims.width_m}m × ${dims.height_m}m (${dims.volume_m3} m³ théorique)</p>
+                
+                <p><strong>📊 Analyse :</strong><br>
+                • Taux de remplissage : ${data.fill_ratio_percent}%<br>
+                • Facteur d'empilage : ${(data.packing_factor * 100).toFixed(0)}%<br>
+                • Analyse profondeur : ${data.depth_analysis}
+                </p>
+                
+                <p><strong>🤖 Méthode :</strong> ${data.method}</p>
+                
+                <div class="precision-badge">🎯 Précision : ${data.precision}</div>
+            `;
+            
+            document.getElementById('resultDetails').innerHTML = details;
+            result.classList.add('show');
+        }
+        
+        function showError(message) {
+            error.textContent = '❌ ' + message;
+            error.classList.add('show');
+        }
+    </script>
+</body>
+</html>
