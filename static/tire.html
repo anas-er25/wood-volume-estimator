@@ -1,801 +1,134 @@
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wood Volume Estimator V5</title>
-
-    <style>
-        * {
-            box-sizing: border-box
-        }
-
-        body {
-            margin: 0;
-            font-family: Inter, Segoe UI, Arial, sans-serif;
-            background: #08111d;
-            color: #e9f0fa;
-        }
-
-        .container {
-            max-width: 1120px;
-            margin: auto;
-            padding: 32px 18px 60px;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-
-        h1 {
-            margin: 0 0 7px;
-            font-size: 35px;
-        }
-
-        .subtitle {
-            color: #92a7c2;
-        }
-
-        .card {
-            background: #111c2c;
-            border: 1px solid #293b55;
-            border-radius: 18px;
-            padding: 22px;
-            margin-bottom: 18px;
-        }
-
-        .notice {
-            background: #17263a;
-            border-left: 4px solid #5b9cff;
-            border-radius: 10px;
-            padding: 14px;
-            color: #c8d7ea;
-            line-height: 1.55;
-        }
-
-        .photos {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-top: 18px;
-        }
-
-        .photo {
-            background: #0b1524;
-            border: 1px solid #293c58;
-            border-radius: 14px;
-            padding: 13px;
-        }
-
-        .photo h3 {
-            margin: 0 0 5px;
-            font-size: 16px;
-        }
-
-        .photo p {
-            margin: 0 0 12px;
-            color: #8fa3bc;
-            font-size: 13px;
-            line-height: 1.4;
-        }
-
-        .drop {
-            height: 190px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            border: 2px dashed #395170;
-            border-radius: 11px;
-            background: #08111d;
-            overflow: hidden;
-            cursor: pointer;
-        }
-
-        .drop:hover {
-            border-color: #6ca5ff;
-        }
-
-        .drop img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .drop span {
-            color: #788ea9;
-            padding: 20px;
-        }
-
-        .file {
-            display: none;
-        }
-
-        .actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 18px;
-        }
-
-        button {
-            border: 0;
-            border-radius: 10px;
-            padding: 12px 18px;
-            font-weight: 700;
-            font-size: 15px;
-            cursor: pointer;
-        }
-
-        .primary {
-            background: #4f8cff;
-            color: white;
-            flex: 1;
-        }
-
-        .secondary {
-            background: #24344b;
-            color: #d1deef;
-        }
-
-        button:disabled {
-            opacity: .5;
-            cursor: not-allowed;
-        }
-
-        .status {
-            margin-top: 14px;
-            min-height: 22px;
-            color: #aabbd0;
-        }
-
-        .results {
-            display: none;
-        }
-
-        .hero {
-            text-align: center;
-            padding: 25px;
-            background: #0b1726;
-            border: 1px solid #2b405e;
-            border-radius: 15px;
-        }
-
-        .hero .value {
-            font-size: 42px;
-            font-weight: 800;
-            margin: 7px 0;
-        }
-
-        .hero .label {
-            color: #91a6bf;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-top: 14px;
-        }
-
-        .metric {
-            background: #17243a;
-            border: 1px solid #293d59;
-            border-radius: 12px;
-            padding: 15px;
-        }
-
-        .metric .label {
-            color: #8fa2bb;
-            font-size: 12px;
-        }
-
-        .metric .value {
-            margin-top: 6px;
-            font-size: 20px;
-            font-weight: 750;
-        }
-
-        .ok {
-            margin-top: 14px;
-            padding: 14px;
-            border-radius: 11px;
-            background: #102b24;
-            border: 1px solid #2b6958;
-            color: #b7dfd1;
-            line-height: 1.5;
-        }
-
-        .warning {
-            margin-top: 14px;
-            padding: 14px;
-            border-radius: 11px;
-            background: #2b2414;
-            border: 1px solid #6b5722;
-            color: #dfcf99;
-            line-height: 1.5;
-        }
-
-        pre {
-            margin-top: 14px;
-            background: #060e18;
-            padding: 14px;
-            border-radius: 10px;
-            color: #a9bbd1;
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-size: 12px;
-            overflow: auto;
-        }
-
-        details {
-            margin-top: 16px;
-        }
-
-        @media(max-width:800px) {
-
-            .photos,
-            .grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wood Volume Estimator V8</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:#08111d;color:#e9f0fa}
+.container{max-width:1150px;margin:auto;padding:30px 18px 60px}header{text-align:center;margin-bottom:22px}
+h1{margin:0 0 8px;font-size:34px}.subtitle{color:#91a6bf}
+.card{background:#111c2c;border:1px solid #293b55;border-radius:18px;padding:22px;margin-bottom:18px}
+.notice{background:#17263a;border-left:4px solid #5b9cff;border-radius:10px;padding:14px;color:#c8d7ea;line-height:1.55}
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:18px}.photo{background:#0b1524;border:1px solid #293c58;border-radius:14px;padding:13px}
+.photo h3{margin:0 0 5px;font-size:16px}.photo p{margin:0 0 12px;color:#8fa3bc;font-size:13px;line-height:1.4}
+.drop{height:190px;display:flex;align-items:center;justify-content:center;text-align:center;border:2px dashed #395170;border-radius:11px;background:#08111d;overflow:hidden;cursor:pointer}
+.drop img{width:100%;height:100%;object-fit:cover}.drop span{color:#788ea9;padding:20px}.file{display:none}
+.actions{display:flex;gap:10px;margin-top:18px}button{border:0;border-radius:10px;padding:12px 18px;font-weight:700;font-size:15px;cursor:pointer}
+.primary{background:#4f8cff;color:#fff;flex:1}.secondary{background:#24344b;color:#d1deef}button:disabled{opacity:.5}
+.status{margin-top:14px;min-height:22px;color:#aabbd0}.results{display:none}
+.hero{text-align:center;padding:25px;background:#0b1726;border:1px solid #2b405e;border-radius:15px}
+.hero .value{font-size:42px;font-weight:800;margin:7px 0}.hero .label{color:#91a6bf}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}.metric{background:#17243a;border:1px solid #293d59;border-radius:12px;padding:15px}
+.metric .label{color:#8fa2bb;font-size:12px}.metric .value{margin-top:6px;font-size:20px;font-weight:750}
+.ok,.warning{margin-top:14px;padding:14px;border-radius:11px;line-height:1.5}.ok{background:#102b24;border:1px solid #2b6958;color:#b7dfd1}
+.warning{background:#2b2414;border:1px solid #6b5722;color:#dfcf99}pre{margin-top:14px;background:#060e18;padding:14px;border-radius:10px;color:#a9bbd1;white-space:pre-wrap;word-break:break-word;font-size:12px;overflow:auto}
+@media(max-width:800px){.photos,.grid{grid-template-columns:1fr}}
+</style>
 </head>
-
 <body>
-
-    <div class="container">
-
-        <header>
-            <h1>🌲 Wood Volume Estimator V5</h1>
-            <div class="subtitle">
-                3 photos → détection → reconstruction 3D multi-vues
-            </div>
-        </header>
-
-        <div class="card">
-
-            <h2>📸 Jeu photogrammétrique</h2>
-
-            <div class="notice">
-                <strong>Important pour V5 :</strong>
-                les trois photos doivent montrer <strong>le même camion, le même
-                    chargement et le même moment</strong>, mais depuis des positions
-                différentes autour du camion.
-                <br><br>
-                V5 ne transforme plus directement une bounding box en mètres.
-                Il cherche des correspondances visuelles entre les photos et
-                reconstruit une géométrie 3D sparse.
-            </div>
-
-            <div class="photos">
-
-                <div class="photo">
-                    <h3>Vue 1 — Latérale</h3>
-                    <p>
-                        Camion entier. Essayez de garder une grande partie du
-                        chargement visible.
-                    </p>
-
-                    <label class="drop" for="photo1">
-                        <span id="txt1">Choisir la photo</span>
-                        <img id="img1" style="display:none" alt="">
-                    </label>
-
-                    <input id="photo1" class="file" type="file" accept="image/*">
-                </div>
-
-
-                <div class="photo">
-                    <h3>Vue 2 — Arrière / 3⁄4</h3>
-                    <p>
-                        Déplacez-vous autour du même camion sans changer le chargement.
-                    </p>
-
-                    <label class="drop" for="photo2">
-                        <span id="txt2">Choisir la photo</span>
-                        <img id="img2" style="display:none" alt="">
-                    </label>
-
-                    <input id="photo2" class="file" type="file" accept="image/*">
-                </div>
-
-
-                <div class="photo">
-                    <h3>Vue 3 — Opposée / 3⁄4</h3>
-                    <p>
-                        Troisième position autour du même camion.
-                    </p>
-
-                    <label class="drop" for="photo3">
-                        <span id="txt3">Choisir la photo</span>
-                        <img id="img3" style="display:none" alt="">
-                    </label>
-
-                    <input id="photo3" class="file" type="file" accept="image/*">
-                </div>
-
-            </div>
-
-
-            <div class="actions">
-
-                <button id="analyze" class="primary">
-                    🔬 Reconstruire en 3D
-                </button>
-
-                <button id="reset" class="secondary">
-                    Réinitialiser
-                </button>
-
-            </div>
-
-            <div id="status" class="status"></div>
-
-        </div>
-
-
-        <div id="results" class="card results">
-
-            <h2>📊 Résultat V5</h2>
-
-            <div class="hero">
-
-                <div class="label">
-                    Volume métrique
-                </div>
-
-                <div id="volume" class="value">
-                    Non calculable
-                </div>
-
-                <div class="label">
-                    V5 exige actuellement une reconstruction
-                    métrique complète avant de déclarer des m³.
-                </div>
-
-            </div>
-
-
-            <div class="grid">
-
-                <div class="metric">
-                    <div class="label">
-                        Points 3D
-                    </div>
-                    <div id="points" class="value">
-                        —
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="label">
-                        Score multi-vues
-                    </div>
-                    <div id="geometry" class="value">
-                        —
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="label">
-                        Camion
-                    </div>
-                    <div id="truck" class="value">
-                        —
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="label">
-                        Pneu détecté
-                    </div>
-                    <div id="tire" class="value">
-                        —
-                    </div>
-                </div>
-
-            </div>
-
-
-            <div id="message" class="ok"></div>
-
-            <div id="warnings" class="warning"></div>
-
-
-            <details>
-                <summary>
-                    🔧 Diagnostics complets
-                </summary>
-
-                <pre id="json"></pre>
-            </details>
-
-        </div>
-
-    </div>
-
-
-    <script>
-
-        const API = "http://127.0.0.1:8000";
-
-        const inputs = {
-            1: document.getElementById("photo1"),
-            2: document.getElementById("photo2"),
-            3: document.getElementById("photo3")
-        };
-
-
-        for (const n of [1, 2, 3]) {
-
-            inputs[n].addEventListener(
-                "change",
-                () => {
-
-                    const file =
-                        inputs[n].files[0];
-
-                    if (!file) return;
-
-                    const image =
-                        document.getElementById(
-                            "img" + n
-                        );
-
-                    const text =
-                        document.getElementById(
-                            "txt" + n
-                        );
-
-                    image.src =
-                        URL.createObjectURL(file);
-
-                    image.style.display =
-                        "block";
-
-                    text.style.display =
-                        "none";
-                }
-            );
-        }
-
-
-        document
-            .getElementById("analyze")
-            .addEventListener(
-                "click",
-                async () => {
-
-                    const selected = [
-                        inputs[1].files[0],
-                        inputs[2].files[0],
-                        inputs[3].files[0]
-                    ];
-
-                    if (
-                        selected.some(
-                            f => !f
-                        )
-                    ) {
-
-                        setStatus(
-                            "❌ Les 3 photos sont obligatoires."
-                        );
-
-                        return;
-                    }
-
-
-                    const form =
-                        new FormData();
-
-                    form.append(
-                        "photo1",
-                        selected[0]
-                    );
-
-                    form.append(
-                        "photo2",
-                        selected[1]
-                    );
-
-                    form.append(
-                        "photo3",
-                        selected[2]
-                    );
-
-
-                    const button =
-                        document.getElementById(
-                            "analyze"
-                        );
-
-                    button.disabled =
-                        true;
-
-
-                    setStatus(
-                        "⏳ Détection → SIFT → correspondances → poses caméra → triangulation 3D..."
-                    );
-
-
-                    try {
-
-                        const response =
-                            await fetch(
-                                API + "/estimate-volume",
-                                {
-                                    method: "POST",
-                                    body: form
-                                }
-                            );
-
-                        const data =
-                            await response.json();
-
-
-                        if (!response.ok) {
-
-                            throw new Error(
-                                data.detail ||
-                                "Erreur serveur."
-                            );
-
-                        }
-
-
-                        render(
-                            data
-                        );
-
-                        setStatus(
-                            "✅ Analyse multi-vues terminée."
-                        );
-
-
-                    } catch (error) {
-
-                        console.error(
-                            error
-                        );
-
-                        setStatus(
-                            "❌ " + error.message
-                        );
-
-                    } finally {
-
-                        button.disabled =
-                            false;
-
-                    }
-
-                }
-            );
-
-
-        document
-            .getElementById("reset")
-            .addEventListener(
-                "click",
-                () => {
-
-                    for (
-                        const n of [1, 2, 3]
-                    ) {
-
-                        inputs[n].value =
-                            "";
-
-                        const image =
-                            document.getElementById(
-                                "img" + n
-                            );
-
-                        const text =
-                            document.getElementById(
-                                "txt" + n
-                            );
-
-                        image.src =
-                            "";
-
-                        image.style.display =
-                            "none";
-
-                        text.style.display =
-                            "block";
-                    }
-
-                    document.getElementById(
-                        "results"
-                    ).style.display =
-                        "none";
-
-                    setStatus("");
-                }
-            );
-
-
-        function render(data) {
-
-            const reconstruction =
-                data.reconstruction_3d ||
-                {};
-
-            const quality =
-                data.quality ||
-                {};
-
-            const scale =
-                data.scale ||
-                {};
-
-            const diagnostics =
-                data.diagnostics ||
-                [];
-
-
-            const points =
-                reconstruction.point_count;
-
-            document.getElementById(
-                "points"
-            ).textContent =
-                points == null
-                    ? "0"
-                    : Number(points).toLocaleString();
-
-
-            document.getElementById(
-                "geometry"
-            ).textContent =
-                quality.score == null
-                    ? "—"
-                    : Math.round(
-                        quality.score
-                    ) + "/100";
-
-
-            const truckCount =
-                diagnostics.filter(
-                    v =>
-                        v.truck &&
-                        v.truck.detected
-                ).length;
-
-
-            document.getElementById(
-                "truck"
-            ).textContent =
-                truckCount + "/3";
-
-
-            const tireCount =
-                diagnostics.filter(
-                    v =>
-                        v.tire
-                ).length;
-
-
-            document.getElementById(
-                "tire"
-            ).textContent =
-                tireCount + "/3";
-
-
-            const volume =
-                data.resultat &&
-                data.resultat.volume_apparent_m3;
-
-
-            document.getElementById(
-                "volume"
-            ).textContent =
-                volume == null
-                    ? "Non calculable"
-                    : Number(volume)
-                        .toFixed(2) + " m³";
-
-
-            const hull =
-                reconstruction
-                    .sparse_convex_hull_volume_unscaled;
-
-
-            document.getElementById(
-                "message"
-            ).textContent =
-                hull != null
-                    ? "✅ Un nuage 3D sparse a été reconstruit. Son hull est affiché uniquement comme diagnostic non métrique."
-                    : "ℹ️ Aucun volume 3D exploitable n'a encore été obtenu.";
-
-
-            const warnings =
-                data.warnings ||
-                [];
-
-
-            document.getElementById(
-                "warnings"
-            ).innerHTML =
-                warnings
-                    .map(
-                        w =>
-                            "⚠️ " +
-                            escapeHtml(w)
-                    )
-                    .join("<br>");
-
-
-            document.getElementById(
-                "json"
-            ).textContent =
-                JSON.stringify(
-                    data,
-                    null,
-                    2
-                );
-
-
-            document.getElementById(
-                "results"
-            ).style.display =
-                "block";
-
-
-            window.scrollTo({
-                top:
-                    document.getElementById(
-                        "results"
-                    ).offsetTop - 15,
-                behavior: "smooth"
-            });
-        }
-
-
-        function setStatus(
-            text
-        ) {
-
-            document.getElementById(
-                "status"
-            ).textContent =
-                text;
-        }
-
-
-        function escapeHtml(
-            value
-        ) {
-
-            return String(value)
-                .replaceAll(
-                    "&",
-                    "&amp;"
-                )
-                .replaceAll(
-                    "<",
-                    "&lt;"
-                )
-                .replaceAll(
-                    ">",
-                    "&gt;"
-                )
-                .replaceAll(
-                    '"',
-                    "&quot;"
-                )
-                .replaceAll(
-                    "'",
-                    "&#039;"
-                );
-        }
-
-    </script>
-
+<div class="container">
+<header><h1>🌲 Wood Volume Estimator V8</h1><div class="subtitle">3 photos → reconstruction 3D → volume métrique validé</div></header>
+
+<div class="card">
+<h2>📸 Jeu photogrammétrique</h2>
+<div class="notice">
+<strong>Important :</strong> les trois photos doivent montrer le <strong>même camion et le même chargement</strong>, pris au même moment depuis trois positions différentes.
+<br><br>
+V8 ne transforme plus une couverture de pixels en volume. Une valeur en m³ n'est affichée que lorsqu'une géométrie métrique est suffisamment validée.
+</div>
+
+<div class="photos">
+<div class="photo"><h3>Vue 1 — Latérale</h3><p>Gardez le chargement et le camion bien visibles.</p>
+<label class="drop" for="photo1"><span id="txt1">Choisir la photo</span><img id="img1" style="display:none" alt=""></label>
+<input id="photo1" class="file" type="file" accept="image/*"></div>
+
+<div class="photo"><h3>Vue 2 — Arrière / 3⁄4</h3><p>Déplacez-vous autour du même camion.</p>
+<label class="drop" for="photo2"><span id="txt2">Choisir la photo</span><img id="img2" style="display:none" alt=""></label>
+<input id="photo2" class="file" type="file" accept="image/*"></div>
+
+<div class="photo"><h3>Vue 3 — Opposée / 3⁄4</h3><p>Troisième position autour du même camion.</p>
+<label class="drop" for="photo3"><span id="txt3">Choisir la photo</span><img id="img3" style="display:none" alt=""></label>
+<input id="photo3" class="file" type="file" accept="image/*"></div>
+</div>
+
+<div class="actions"><button id="analyze" class="primary">🔬 Analyser en 3D</button><button id="reset" class="secondary">Réinitialiser</button></div>
+<div id="status" class="status"></div>
+</div>
+
+<div id="results" class="card">
+<h2>📊 Résultat V8</h2>
+<div class="hero"><div class="label">Volume métrique validé</div><div id="volume" class="value">Non disponible</div><div class="label" id="volumeSub">V8 refuse un m³ non validé.</div></div>
+<div class="grid">
+<div class="metric"><div class="label">Points 3D</div><div id="points" class="value">—</div></div>
+<div class="metric"><div class="label">Qualité globale</div><div id="quality" class="value">—</div></div>
+<div class="metric"><div class="label">Camion</div><div id="truck" class="value">—</div></div>
+<div class="metric"><div class="label">Pneus</div><div id="tire" class="value">—</div></div>
+</div>
+<div id="message" class="ok"></div><div id="warnings" class="warning"></div>
+<details><summary>🔧 Diagnostics complets</summary><pre id="json"></pre></details>
+</div>
+</div>
+
+<script>
+const API="";
+const inputs={1:document.getElementById("photo1"),2:document.getElementById("photo2"),3:document.getElementById("photo3")};
+
+for(const n of [1,2,3]){
+ inputs[n].addEventListener("change",()=>{
+  const f=inputs[n].files[0]; if(!f)return;
+  const img=document.getElementById("img"+n), txt=document.getElementById("txt"+n);
+  img.src=URL.createObjectURL(f); img.style.display="block"; txt.style.display="none";
+ });
+}
+
+document.getElementById("analyze").addEventListener("click",async()=>{
+ const selected=[inputs[1].files[0],inputs[2].files[0],inputs[3].files[0]];
+ if(selected.some(f=>!f)){setStatus("❌ Les 3 photos sont obligatoires.");return;}
+ const form=new FormData();
+ form.append("photo1",selected[0]);form.append("photo2",selected[1]);form.append("photo3",selected[2]);
+ const button=document.getElementById("analyze");button.disabled=true;
+ setStatus("⏳ Détection → matching → géométrie → triangulation...");
+ try{
+  const response=await fetch(API+"/estimate-volume",{method:"POST",body:form});
+  const text=await response.text();
+  let data;
+  try{data=JSON.parse(text)}catch{throw new Error("Réponse serveur non JSON: "+text.slice(0,300))}
+  if(!response.ok)throw new Error(data.detail||"Erreur serveur.");
+  render(data);setStatus("✅ Analyse V8 terminée.");
+ }catch(e){console.error(e);setStatus("❌ "+e.message)}
+ finally{button.disabled=false}
+});
+
+document.getElementById("reset").addEventListener("click",()=>{
+ for(const n of [1,2,3]){
+  inputs[n].value="";
+  document.getElementById("img"+n).style.display="none";
+  document.getElementById("img"+n).src="";
+  document.getElementById("txt"+n).style.display="block";
+ }
+ document.getElementById("results").style.display="none";setStatus("");
+});
+
+function render(data){
+ const r=data.reconstruction_3d||{},q=data.quality||{},d=data.diagnostics||[];
+ document.getElementById("points").textContent=Number(r.point_count||0).toLocaleString();
+ document.getElementById("quality").textContent=q.score==null?"—":Math.round(q.score)+"/100";
+ document.getElementById("truck").textContent=d.filter(v=>v.truck&&v.truck.detected).length+"/3";
+ document.getElementById("tire").textContent=d.filter(v=>v.tire).length+"/3";
+ const v=data.resultat&&data.resultat.volume_apparent_m3;
+ document.getElementById("volume").textContent=v==null?"Non disponible":Number(v).toFixed(2)+" m³";
+ document.getElementById("volumeSub").textContent=v==null?"Aucune valeur m³ n'est déclarée sans validation métrique.":"Volume métrique validé.";
+ document.getElementById("message").textContent=
+   r.success?"ℹ️ Une reconstruction sparse existe; l'échelle métrique doit encore être validée."
+           :"⚠️ La reconstruction métrique n'est pas suffisamment robuste pour déclarer un volume.";
+ document.getElementById("warnings").innerHTML=(data.warnings||[]).map(w=>"⚠️ "+escapeHtml(w)).join("<br>");
+ document.getElementById("json").textContent=JSON.stringify(data,null,2);
+ document.getElementById("results").style.display="block";
+ window.scrollTo({top:document.getElementById("results").offsetTop-15,behavior:"smooth"});
+}
+function setStatus(t){document.getElementById("status").textContent=t}
+function escapeHtml(v){return String(v).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
+</script>
 </body>
-
 </html>

@@ -1,6 +1,6 @@
 
 """
-WOOD VOLUME ESTIMATOR V5
+WOOD VOLUME ESTIMATOR V7
 ========================
 
 3 photos -> 2D detection -> multi-view geometry -> sparse 3D reconstruction.
@@ -38,6 +38,8 @@ import numpy as np
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 try:
     import open3d as o3d
@@ -56,8 +58,8 @@ REFERENCE_TIRE_DIAMETER_M = float(
     os.getenv("REFERENCE_TIRE_DIAMETER_M", "1.00")
 )
 
-MIN_MATCHES = int(os.getenv("MIN_MATCHES", "40"))
-MIN_INLIERS = int(os.getenv("MIN_INLIERS", "20"))
+MIN_MATCHES = int(os.getenv("MIN_MATCHES", "18"))
+MIN_INLIERS = int(os.getenv("MIN_INLIERS", "12"))
 
 # Camera focal approximation. The real production version should use
 # camera calibration / EXIF intrinsics.
@@ -73,9 +75,16 @@ COMPACTION_FACTOR = float(
 # ---------------------------------------------------------------------
 
 app = FastAPI(
-    title="Wood Volume Estimator V5",
-    version="5.0.0",
+    title="Wood Volume Estimator V7",
+    version="7.0.0",
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.get("/")
+def root():
+    return FileResponse("static/tire.html")
 
 app.add_middleware(
     CORSMiddleware,
@@ -606,7 +615,7 @@ def create_features(
         mask = None
 
     sift = cv2.SIFT_create(
-        nfeatures=5000,
+        nfeatures=8000,
         contrastThreshold=0.02,
     )
 
@@ -650,7 +659,7 @@ def match_features(
 
         m, n = pair
 
-        if m.distance < 0.72*n.distance:
+        if m.distance < 0.78*n.distance:
             good.append(m)
 
     return good
@@ -717,13 +726,29 @@ def estimate_pair_geometry(
         [0, 0, 1],
     ], dtype=np.float64)
 
+    # V6: first reject gross 2D mismatches with a Fundamental Matrix.
+    F, fmask = cv2.findFundamentalMat(
+        pts1, pts2, cv2.FM_RANSAC, 1.5, 0.999
+    )
+    if F is not None and fmask is not None:
+        keep = fmask.ravel().astype(bool)
+        pts1 = pts1[keep]
+        pts2 = pts2[keep]
+        result["fundamental_inliers"] = int(np.sum(keep))
+    else:
+        result["fundamental_inliers"] = 0
+
+    if len(pts1) < MIN_INLIERS:
+        result["reason"] = f"Pas assez de correspondances géométriques après F ({len(pts1)} < {MIN_INLIERS})."
+        return result
+
     E, mask = cv2.findEssentialMat(
         pts1,
         pts2,
         K,
         method=cv2.RANSAC,
         prob=0.999,
-        threshold=1.0,
+        threshold=1.5,
     )
 
     if E is None or mask is None:
@@ -898,11 +923,17 @@ def reconstruct_scene(
         images
     ):
 
-        bbox = (
-            view_info[index]
-            ["loading_zone"]
-            ["bbox"]
-        )
+        # V6: use an expanded truck ROI for matching. Wood-only texture was too
+        # repetitive and produced too few reliable correspondences in V5.
+        bbox = view_info[index]["truck"].get("bbox")
+        if bbox is not None:
+            h, w = image.shape[:2]
+            x1, y1, x2, y2 = [int(v) for v in bbox]
+            pad_x = int(0.04 * max(1, x2 - x1))
+            pad_y = int(0.04 * max(1, y2 - y1))
+            bbox = [max(0, x1-pad_x), max(0, y1-pad_y), min(w, x2+pad_x), min(h, y2+pad_y)]
+        else:
+            bbox = view_info[index]["loading_zone"]["bbox"]
 
         kp, des = create_features(
             image,
@@ -1228,7 +1259,7 @@ def health():
 
     return {
         "status": "ok",
-        "version": "5.0.0",
+        "version": "6.0.0",
         "yolo_loaded": yolo_model is not None,
         "open3d_loaded": OPEN3D_AVAILABLE,
         "manual_dimensions": False,
@@ -1239,261 +1270,274 @@ def health():
     }
 
 
+
+# ---------------------------------------------------------------------
+# V7 metric fallback
+# ---------------------------------------------------------------------
+
+def _bbox_dims(bbox: Optional[List[int]]) -> Optional[Tuple[float, float]]:
+    if not bbox or len(bbox) != 4:
+        return None
+    x1, y1, x2, y2 = map(float, bbox)
+    return max(1.0, x2 - x1), max(1.0, y2 - y1)
+
+
+def _robust_median(values: List[float]) -> Optional[float]:
+    values = [float(v) for v in values if v is not None and math.isfinite(float(v)) and float(v) > 0]
+    if not values:
+        return None
+    return float(np.median(values))
+
+
+def estimate_metric_fallback(views: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Conservative metric fallback.
+
+    This is deliberately NOT presented as dense photogrammetry. It uses the
+    detected tire as a local physical reference and the three projected load
+    boxes to derive a box-like estimate. The result is labelled estimated and
+    receives a confidence penalty for perspective inconsistency.
+    """
+    samples = []
+    for v in views:
+        tire = v.get("tire") or {}
+        loading = v.get("loading_zone") or {}
+        dims = _bbox_dims(loading.get("bbox"))
+        dpx = safe_float(tire.get("diameter_px"))
+        if dims is None or not dpx or dpx < 20:
+            continue
+        wpx, hpx = dims
+        scale = REFERENCE_TIRE_DIAMETER_M / dpx
+        samples.append({
+            "photo": v.get("photo"),
+            "width_m": wpx * scale,
+            "height_m": hpx * scale,
+            "scale_m_per_px": scale,
+            "tire_diameter_px": dpx,
+            "fill_ratio": safe_float((v.get("wood") or {}).get("fill_ratio")) or 0.0,
+        })
+
+    if len(samples) < 2:
+        return {
+            "available": False,
+            "method": "metric_fallback",
+            "reason": "Référence pneu insuffisante pour au moins deux vues.",
+        }
+
+    projected_widths = [s["width_m"] for s in samples]
+    projected_heights = [s["height_m"] for s in samples]
+    fills = [s["fill_ratio"] for s in samples if s["fill_ratio"] > 0]
+
+    # For three surrounding views, the widest horizontal projection is treated
+    # as the longitudinal extent and the narrowest as the transverse extent.
+    # This is a fallback model, not a replacement for calibrated 3D geometry.
+    length_m = max(projected_widths)
+    width_m = min(projected_widths)
+    height_m = float(np.median(projected_heights))
+    fill_ratio = float(np.clip(np.median(fills) if fills else 0.75, 0.25, 0.95))
+
+    raw_box_volume = length_m * width_m * height_m
+    apparent_volume = raw_box_volume * fill_ratio
+
+    # Consistency penalty: a real multi-view set should not have wildly
+    # different scale-normalized projected heights. This reduces confidence,
+    # but does not silently invalidate the fallback.
+    h_med = float(np.median(projected_heights))
+    h_dev = float(np.median(np.abs(np.array(projected_heights) - h_med)) / max(h_med, 1e-9))
+    w_ratio = max(projected_widths) / max(min(projected_widths), 1e-9)
+
+    consistency = 1.0
+    consistency *= max(0.15, 1.0 - min(h_dev, 1.0) * 0.55)
+    if w_ratio > 5:
+        consistency *= 0.55
+    elif w_ratio > 3:
+        consistency *= 0.70
+    elif w_ratio > 2:
+        consistency *= 0.82
+
+    detection_conf = float(np.mean([
+        float(v.get("truck", {}).get("confidence") or 0.0)
+        for v in views
+    ]))
+    tire_count = sum(1 for v in views if v.get("tire"))
+    base_conf = 0.45 * detection_conf + 0.35 * min(1.0, tire_count / 3.0) + 0.20 * consistency
+    confidence = float(np.clip(base_conf * consistency, 0.05, 0.90))
+
+    return {
+        "available": True,
+        "method": "metric_fallback_tire_scaled_projected_box",
+        "confidence": confidence,
+        "dimensions_m": {
+            "length_m": float(length_m),
+            "width_m": float(width_m),
+            "height_m": float(height_m),
+        },
+        "fill_ratio": fill_ratio,
+        "raw_box_volume_m3": float(raw_box_volume),
+        "volume_apparent_m3": float(apparent_volume),
+        "stere_apparent": float(apparent_volume / max(COMPACTION_FACTOR, 1e-6)),
+        "samples": samples,
+        "consistency": {
+            "height_relative_deviation": h_dev,
+            "projected_width_ratio": w_ratio,
+            "score": consistency,
+        },
+        "warning": (
+            "Estimation de secours: elle utilise le pneu comme référence locale "
+            "et des projections 2D. Elle ne remplace pas une reconstruction 3D métrique dense."
+        ),
+    }
+
+
+def quality_v7(views: List[Dict[str, Any]], reconstruction: Dict[str, Any], fallback: Dict[str, Any]) -> Dict[str, Any]:
+    truck = [float(v["truck"]["confidence"]) for v in views if v.get("truck", {}).get("confidence") is not None]
+    wood = [float(v["wood"]["confidence"]) for v in views if v.get("wood", {}).get("confidence") is not None]
+    pairs = reconstruction.get("pair_results", [])
+    if pairs:
+        geometry = float(np.mean([
+            min(1.0, float(p.get("matches", 0)) / 50.0) * 0.45
+            + float(p.get("inlier_ratio", 0.0)) * 0.55
+            for p in pairs
+        ]))
+    else:
+        geometry = 0.0
+    truck_score = float(np.mean(truck)) if truck else 0.0
+    wood_score = float(np.mean(wood)) if wood else 0.0
+    fallback_score = float(fallback.get("confidence", 0.0)) if fallback.get("available") else 0.0
+    return {
+        "score": float(np.clip((0.25 * truck_score + 0.20 * wood_score + 0.25 * geometry + 0.30 * fallback_score) * 100, 0, 100)),
+        "truck_detection": truck_score,
+        "wood_detection": wood_score,
+        "multi_view_geometry": geometry,
+        "fallback_confidence": fallback_score,
+    }
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "version": "7.0.0",
+        "yolo_loaded": yolo_model is not None,
+        "open3d_loaded": OPEN3D_AVAILABLE,
+        "manual_dimensions": False,
+        "multi_view_geometry": True,
+        "metric_fallback": True,
+        "metric_scale": "tire_reference_with_fallback",
+    }
+
+
 @app.post("/estimate-volume")
 async def estimate_volume(
     photo1: UploadFile = File(...),
     photo2: UploadFile = File(...),
     photo3: UploadFile = File(...),
 ):
+    uploaded = [photo1, photo2, photo3]
+    images: List[np.ndarray] = []
 
-    uploaded = [
-        photo1,
-        photo2,
-        photo3,
-    ]
-
-    images = []
-
-    for index, file in enumerate(
-        uploaded,
-        start=1,
-    ):
-
+    for index, file in enumerate(uploaded, start=1):
         data = await file.read()
-
         image = decode_image(data)
-
         if image is None:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Photo {index} invalide.",
-            )
-
+            raise HTTPException(status_code=400, detail=f"Photo {index} invalide.")
         images.append(image)
 
-    print("\n" + "="*72)
-    print(
-        "WOOD VOLUME ESTIMATOR V5"
-    )
-    print(
-        "3 PHOTOS -> MULTI-VIEW GEOMETRY -> SPARSE 3D"
-    )
-    print("="*72)
+    print("\n" + "=" * 72)
+    print("WOOD VOLUME ESTIMATOR V7")
+    print("3 PHOTOS -> 3D RECONSTRUCTION -> METRIC FALLBACK")
+    print("=" * 72)
 
     view_info = []
-
-    for index, image in enumerate(
-        images,
-        start=1,
-    ):
-
-        tire = detect_tire(
-            image
-        )
-
-        truck = detect_truck(
-            image
-        )
-
-        loading = detect_loading_zone(
-            image,
-            truck,
-        )
-
-        wood = detect_wood(
-            image,
-            loading,
-        )
-
+    for index, image in enumerate(images, start=1):
+        tire = detect_tire(image)
+        truck = detect_truck(image)
+        loading = detect_loading_zone(image, truck)
+        wood = detect_wood(image, loading)
         info = {
             "photo": index,
-            "resolution": [
-                int(image.shape[1]),
-                int(image.shape[0]),
-            ],
+            "resolution": [int(image.shape[1]), int(image.shape[0])],
             "tire": tire,
             "truck": {
                 "detected": truck is not None,
-                "confidence": (
-                    float(
-                        truck["confidence"]
-                    )
-                    if truck
-                    else None
-                ),
-                "bbox": (
-                    truck["bbox"]
-                    if truck
-                    else None
-                ),
+                "confidence": float(truck["confidence"]) if truck else None,
+                "bbox": truck["bbox"] if truck else None,
             },
             "loading_zone": loading,
             "wood": wood,
         }
+        view_info.append(info)
+        print(f"PHOTO {index}: truck={truck is not None}, tire={tire is not None}, wood={wood.get('fill_ratio')}")
 
-        view_info.append(
-            info
-        )
-
-        print(
-            f"\n📷 PHOTO {index}"
-        )
-
-        print(
-            "   Truck:",
-            truck is not None,
-        )
-
-        print(
-            "   Tire:",
-            tire is not None,
-        )
-
-        print(
-            "   Wood fill:",
-            wood["fill_ratio"],
-        )
-
-    reconstruction = reconstruct_scene(
-        images,
-        view_info,
-    )
-
-    scale_info = estimate_scale_from_tires(
-        view_info
-    )
+    reconstruction = reconstruct_scene(images, view_info)
+    scale_info = estimate_scale_from_tires(view_info)
 
     sparse_volume = None
+    if reconstruction.get("success"):
+        sparse_volume = point_cloud_volume(reconstruction["points3d"])
 
-    if reconstruction.get(
-        "success"
-    ):
-        sparse_volume = point_cloud_volume(
-            reconstruction["points3d"]
-        )
+    # V7 fallback is intentionally activated when dense/sparse geometry is not
+    # sufficient to produce a defensible metric volume.
+    fallback = estimate_metric_fallback(view_info)
 
-    reconstruction_public = {
-        k: v
-        for k, v in reconstruction.items()
-        if k != "points3d"
-    }
-
-    reconstruction_public[
-        "sparse_convex_hull_volume_unscaled"
-    ] = sparse_volume
-
-    if sparse_volume is not None:
-        reconstruction_public[
-            "volume_status"
-        ] = (
-            "unscaled_only"
-        )
-        reconstruction_public[
-            "volume_warning"
-        ] = (
-            "Le volume du hull est dans l'échelle "
-            "arbitraire de la reconstruction. Il ne "
-            "doit pas être présenté comme m³."
-        )
+    if reconstruction.get("success") and reconstruction.get("scale_known") and sparse_volume is not None:
+        metric_volume = None  # V7 does not yet pretend sparse hull == wood volume.
+        method = "sparse_3d_diagnostic"
+    elif fallback.get("available"):
+        metric_volume = fallback["volume_apparent_m3"]
+        method = "metric_fallback"
     else:
-        reconstruction_public[
-            "volume_status"
-        ] = "not_available"
+        metric_volume = None
+        method = "not_available"
 
-    quality = calculate_quality(
-        view_info,
-        reconstruction,
-    )
+    reconstruction_public = {k: v for k, v in reconstruction.items() if k not in ("points3d",)}
+    reconstruction_public["sparse_convex_hull_volume_unscaled"] = sparse_volume
+    reconstruction_public["volume_status"] = "unscaled_only" if sparse_volume is not None else "not_available"
+
+    quality = quality_v7(view_info, reconstruction, fallback)
 
     warnings = [
-        (
-            "Les trois images doivent représenter "
-            "le même camion et le même chargement "
-            "photographiés depuis des positions différentes."
-        ),
-        (
-            "Un jeu de trois images générées séparément "
-            "ne constitue pas un jeu photogrammétrique valide."
-        ),
-        (
-            "Le pneu fournit une référence physique, mais "
-            "V5 ne l'utilise pas comme facteur global sans "
-            "correspondance 3D du pneu."
-        ),
-        (
-            "Le nuage de points est encore sparse. "
-            "Son convex hull éventuel n'est pas encore "
-            "le volume du bois en m³."
-        ),
-        (
-            "La segmentation du bois est heuristique. "
-            "Un modèle spécialisé WOOD_LOAD est nécessaire "
-            "pour isoler précisément la charge."
-        ),
+        "Les trois photos doivent représenter le même camion et le même chargement au même moment.",
+        "Le mode metric_fallback est une estimation de secours basée sur une référence locale et des projections 2D.",
+        "Le volume du fallback ne doit pas être interprété comme une reconstruction 3D dense certifiée.",
+        "La segmentation du bois est encore heuristique; un modèle WOOD_LOAD spécialisé est nécessaire pour une production robuste.",
     ]
-
-    metric_volume = None
+    if not reconstruction.get("success"):
+        warnings.append("La reconstruction multi-vues n'a pas produit assez d'inliers; V7 utilise donc le fallback métrique.")
 
     response = {
         "success": True,
-        "version": "5.0.0",
+        "version": "7.0.0",
         "manual_dimensions": False,
-
         "dimensions_estimees_m": {
-            "length_m": None,
-            "width_m": None,
-            "height_m": None,
-            "status": (
-                "requires_dense_metric_3d"
-            ),
+            **(fallback.get("dimensions_m") or {"length_m": None, "width_m": None, "height_m": None}),
+            "status": "estimated_fallback" if fallback.get("available") else "requires_metric_3d",
         },
-
         "resultat": {
             "volume_apparent_m3": metric_volume,
-            "stere_apparent": None,
+            "stere_apparent": fallback.get("stere_apparent") if fallback.get("available") else None,
             "volume_solid_indicative_m3": None,
-            "status": (
-                "requires_metric_3d_scale_and_wood_surface"
-            ),
+            "method": method,
+            "confidence": fallback.get("confidence") if fallback.get("available") else 0.0,
+            "status": "estimated" if metric_volume is not None else "not_available",
         },
-
         "quality": quality,
-
         "scale": scale_info,
-
+        "fallback": fallback,
         "reconstruction_3d": reconstruction_public,
-
         "diagnostics": view_info,
-
         "methodology": {
-            "detection": (
-                "YOLO truck detection."
-            ),
-            "wood": (
-                "Experimental pixel segmentation."
-            ),
-            "features": (
-                "SIFT multi-view feature matching."
-            ),
-            "camera_geometry": (
-                "Essential matrix + recoverPose."
-            ),
-            "triangulation": (
-                "Sparse 3D triangulation."
-            ),
-            "scale": (
-                "Tire reference kept separate from "
-                "global 3D scale."
-            ),
-            "volume": (
-                "Not declared in m³ until metric scale "
-                "and wood surface are established."
-            ),
+            "detection": "YOLO truck detection.",
+            "wood": "Experimental pixel segmentation.",
+            "features": "SIFT + ratio test + Fundamental Matrix prefilter.",
+            "camera_geometry": "Fundamental Matrix + Essential Matrix + recoverPose.",
+            "triangulation": "Sparse 3D triangulation when geometry permits.",
+            "scale": "Tire reference; fallback uses local projected scaling.",
+            "fallback": "Tire-scaled projected load box with multi-view consistency penalty.",
+            "volume": "V7 can return an explicitly labelled fallback estimate when 3D reconstruction fails.",
         },
-
         "warnings": warnings,
     }
-
     return py(response)
 
 
@@ -1503,8 +1547,4 @@ async def analyze_compat(
     photo2: UploadFile = File(...),
     photo3: UploadFile = File(...),
 ):
-    return await estimate_volume(
-        photo1,
-        photo2,
-        photo3,
-    )
+    return await estimate_volume(photo1, photo2, photo3)
